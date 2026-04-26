@@ -1,0 +1,167 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
+from sqlalchemy.orm import selectinload
+from models.sale import Sale, SaleItem
+from models.purchase import Purchase, PurchaseItem
+from models.product import Product
+from models.customer import Customer
+from models.supplier import Supplier
+from models.ledger import Ledger
+from models.returns import SaleReturn, SaleReturnItem, PurchaseReturn, PurchaseReturnItem
+from datetime import datetime
+
+async def process_sale_return(db: AsyncSession, sale_id: int = None, customer_id: int = None, items_data: list = [], reason: str = ""):
+    target_customer_id = customer_id
+    
+    if sale_id:
+        query = select(Sale).where(Sale.id == sale_id)
+        result = await db.execute(query)
+        sale = result.scalar_one_or_none()
+        if sale:
+            target_customer_id = sale.customer_id
+
+    total_refund = 0
+    db_return = SaleReturn(
+        sale_id=sale_id,
+        customer_id=target_customer_id,
+        reason=reason,
+        total_refund_amount=0
+    )
+    db.add(db_return)
+    await db.flush()
+    
+    for item in items_data:
+        qty = float(item['quantity'])
+        price = float(item['unit_price'])
+        total_price = qty * price
+        total_refund += total_price
+        
+        db_return_item = SaleReturnItem(
+            return_id=db_return.id,
+            product_id=item['product_id'],
+            quantity=qty,
+            unit_price=price,
+            condition=item.get('condition', 'fine')
+        )
+        db.add(db_return_item)
+        
+        # Adjust Stock: Fine goes to stock_qty, Damaged goes to scrap_qty
+        if item.get('condition') == 'damaged':
+            stmt = update(Product).where(Product.id == item['product_id']).values(
+                scrap_qty=Product.scrap_qty + qty
+            )
+        else:
+            stmt = update(Product).where(Product.id == item['product_id']).values(
+                stock_qty=Product.stock_qty + qty
+            )
+        await db.execute(stmt)
+        
+    db_return.total_refund_amount = total_refund
+    
+    if target_customer_id:
+        # Decrease customer balance
+        stmt = update(Customer).where(Customer.id == target_customer_id).values(
+            outstanding_balance=Customer.outstanding_balance - total_refund
+        )
+        await db.execute(stmt)
+        
+        # Record in Ledger
+        db_ledger = Ledger(
+            party_type="customer",
+            party_id=target_customer_id,
+            transaction_type="sale_return",
+            reference_id=db_return.id,
+            credit=total_refund,
+            description=f"Sales Return {f'for Sale #{sale_id}' if sale_id else ''} - Reason: {reason}"
+        )
+        db.add(db_ledger)
+        
+    await db.commit()
+    return db_return
+
+async def process_purchase_return(db: AsyncSession, purchase_id: int = None, supplier_id: int = None, items_data: list = [], reason: str = ""):
+    target_supplier_id = supplier_id
+    
+    if purchase_id:
+        query = select(Purchase).where(Purchase.id == purchase_id)
+        result = await db.execute(query)
+        purchase = result.scalar_one_or_none()
+        if purchase:
+            target_supplier_id = purchase.supplier_id
+
+    total_refund = 0
+    db_return = PurchaseReturn(
+        purchase_id=purchase_id,
+        supplier_id=target_supplier_id,
+        reason=reason,
+        total_refund_amount=0
+    )
+    db.add(db_return)
+    await db.flush()
+    
+    for item in items_data:
+        qty = float(item['quantity'])
+        cost = float(item['unit_cost'])
+        total_cost = qty * cost
+        total_refund += total_cost
+        
+        db_return_item = PurchaseReturnItem(
+            return_id=db_return.id,
+            product_id=item['product_id'],
+            quantity=qty,
+            unit_cost=cost,
+            condition=item.get('condition', 'fine')
+        )
+        db.add(db_return_item)
+        
+        # Decrease stock/scrap based on condition
+        if item.get('condition') == 'damaged':
+            stmt = update(Product).where(Product.id == item['product_id']).values(
+                scrap_qty=Product.scrap_qty - qty
+            )
+        else:
+            stmt = update(Product).where(Product.id == item['product_id']).values(
+                stock_qty=Product.stock_qty - qty
+            )
+        await db.execute(stmt)
+        
+    db_return.total_refund_amount = total_refund
+    
+    if target_supplier_id:
+        # Decrease supplier balance
+        stmt = update(Supplier).where(Supplier.id == target_supplier_id).values(
+            outstanding_balance=Supplier.outstanding_balance - total_refund
+        )
+        await db.execute(stmt)
+        
+        # Record in Ledger
+        db_ledger = Ledger(
+            party_type="supplier",
+            party_id=target_supplier_id,
+            transaction_type="purchase_return",
+            reference_id=db_return.id,
+            debit=total_refund,
+            description=f"Purchase Return {f'for Purchase #{purchase_id}' if purchase_id else ''} - Reason: {reason}"
+        )
+        db.add(db_ledger)
+    
+    await db.commit()
+    return db_return
+
+async def get_all_sale_returns(db: AsyncSession, skip: int = 0, limit: int = 100):
+    query = select(SaleReturn).options(
+        selectinload(SaleReturn.sale).selectinload(Sale.customer),
+        selectinload(SaleReturn.customer),
+        selectinload(SaleReturn.items).selectinload(SaleReturnItem.product)
+    ).order_by(SaleReturn.date.desc()).offset(skip).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_all_purchase_returns(db: AsyncSession, skip: int = 0, limit: int = 100):
+    query = select(PurchaseReturn).options(
+        selectinload(PurchaseReturn.purchase).selectinload(Purchase.supplier),
+        selectinload(PurchaseReturn.supplier),
+        selectinload(PurchaseReturn.items).selectinload(PurchaseReturnItem.product)
+    ).order_by(PurchaseReturn.date.desc()).offset(skip).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()
