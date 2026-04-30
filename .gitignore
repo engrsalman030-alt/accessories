@@ -46,3 +46,11 @@ Thumbs.db
 # Project specific
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/dist/
+backend/build/
+backend/shop-backend
+frontend/build/
+desktop-app/dist/
+desktop-app/build/
+*.dmg
+*.app

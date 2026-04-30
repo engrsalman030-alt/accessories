@@ -1,0 +1,58 @@
+{
+  "name": "shopmanager",
+  "version": "1.0.0",
+  "description": "Shop Management System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.vts.shopmanager",
+    "productName": "ShopManager",
+    "mac": {
+      "category": "public.app-category.business",
+      "target": ["dmg"],
+      "icon": "build/icon.png"
+    },
+    "dmg": {
+      "icon": "build/icon.png",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "asar": false,
+    "files": [
+      "main.js"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/backend",
+        "to": "backend"
+      },
+      {
+        "from": "frontend",
+        "to": "frontend"
+      }
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.15.2"
+  }
+}
