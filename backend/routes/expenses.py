@@ -28,8 +28,14 @@ async def create_expense(expense: ExpenseCreate, db: AsyncSession = Depends(get_
         new_expense.date = datetime.utcnow()
     db.add(new_expense)
     await db.commit()
-    await db.refresh(new_expense)
-    return new_expense
+    
+    # Re-fetch with category loaded to avoid lazy-load errors
+    result = await db.execute(
+        select(Expense)
+        .options(selectinload(Expense.category))
+        .where(Expense.id == new_expense.id)
+    )
+    return result.scalar_one()
 
 @router.delete("/expenses/{expense_id}")
 async def delete_expense(expense_id: int, db: AsyncSession = Depends(get_db)):
@@ -40,3 +46,21 @@ async def delete_expense(expense_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(expense)
     await db.commit()
     return {"message": "Expense deleted"}
+
+@router.put("/expenses/{expense_id}", response_model=ExpenseResponse)
+async def update_expense(expense_id: int, expense_data: ExpenseCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Expense)
+        .options(selectinload(Expense.category))
+        .where(Expense.id == expense_id)
+    )
+    expense = result.scalar_one_or_none()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    
+    for key, value in expense_data.dict().items():
+        setattr(expense, key, value)
+        
+    await db.commit()
+    await db.refresh(expense)
+    return expense

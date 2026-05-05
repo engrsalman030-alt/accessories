@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from typing import List, Optional
 from datetime import datetime
 from models.customer import Customer
@@ -10,16 +10,29 @@ async def get_all_suppliers(db: AsyncSession, skip: int = 0, limit: int = 100, s
     pass
 
 async def get_all_customers(db: AsyncSession, skip: int = 0, limit: int = 100, search: Optional[str] = None):
+    # Base queries
     query = select(Customer)
+    count_query = select(func.count()).select_from(Customer)
+
     if search:
-        query = query.where(or_(
+        filters = or_(
             Customer.name.ilike(f"%{search}%"),
             Customer.business_name.ilike(f"%{search}%"),
             Customer.phone.ilike(f"%{search}%")
-        ))
+        )
+        query = query.where(filters)
+        count_query = count_query.where(filters)
+
+    # Execute count
+    total_result = await db.execute(count_query)
+    total_count = total_result.scalar()
+
+    # Execute data query
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    customers = result.scalars().all()
+    
+    return customers, total_count
 
 async def get_customer_by_id(db: AsyncSession, customer_id: int):
     query = select(Customer).where(Customer.id == customer_id)

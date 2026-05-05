@@ -9,3 +9,7 @@ python-multipart
 pillow
 reportlab
 pydantic
+pydantic-settings
+aiosqlite
+python-dotenv
+email-validator

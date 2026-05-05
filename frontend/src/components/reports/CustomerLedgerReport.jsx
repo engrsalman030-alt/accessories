@@ -16,7 +16,13 @@ const CustomerLedgerReport = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get('/customers').then(res => setCustomers(res.data));
+    api.get('/customers?limit=1000').then(res => {
+      const data = res.data?.items || res.data || [];
+      setCustomers(Array.isArray(data) ? data : []);
+    }).catch(err => {
+      console.error("Failed to fetch customers:", err);
+      setCustomers([]);
+    });
   }, []);
 
   const fetchLedger = async () => {
@@ -49,7 +55,7 @@ const CustomerLedgerReport = () => {
               className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold focus:border-primary-500 outline-none transition-all"
             >
               <option value="">-- Choose a Customer --</option>
-              {customers.map(c => (
+              {(customers || []).map(c => (
                 <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
               ))}
             </select>

@@ -38,30 +38,30 @@ export default function Reports() {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 print:hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             Business <span className="text-primary-600 underline decoration-indigo-500/30">Intelligence</span>
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-bold uppercase tracking-widest text-xs">Real-time Enterprise overview</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-black uppercase tracking-widest text-[10px]">Real-time Status</p>
         </div>
         
-        <div className="flex gap-1 p-1.5 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-xl rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-inner">
+        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-xl rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
           {[
-            { id: 'summary', label: 'Dashboard', icon: ChartBarIcon },
-            { id: 'customer', label: 'Customer Dues', icon: UserGroupIcon },
-            { id: 'supplier', label: 'Supplier Dues', icon: TruckIcon }
+            { id: 'summary', label: 'Summary', icon: ChartBarIcon },
+            { id: 'customer', label: 'Customers', icon: UserGroupIcon },
+            { id: 'supplier', label: 'Suppliers', icon: TruckIcon }
           ].map((tab) => (
             <button 
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                 activeTab === tab.id 
-                  ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-xl shadow-slate-200/50 dark:shadow-none translate-y-[-1px]' 
+                  ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-sm shadow-slate-200/50 dark:shadow-none' 
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
           ))}
@@ -70,38 +70,38 @@ export default function Reports() {
 
       {activeTab === 'summary' && (
         <div className="space-y-8 animate-in fade-in duration-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, i) => (
               <div 
                 key={stat.name} 
-                className="card-premium p-8 group relative overflow-hidden transition-all duration-500 hover:translate-y-[-4px]"
+                className="card-premium p-5 group relative overflow-hidden transition-all duration-500 hover:translate-y-[-2px]"
                 style={{ animationDelay: `${i * 100}ms` }}
               >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 dark:bg-slate-800/20 rounded-full translate-x-12 -translate-y-12 group-hover:scale-125 transition-transform duration-700"></div>
-                <div className="flex flex-col gap-4 relative z-10">
-                  <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm`}>
-                    <stat.icon className="w-6 h-6" />
+                <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 dark:bg-slate-800/20 rounded-full translate-x-10 -translate-y-10 group-hover:scale-125 transition-transform duration-700"></div>
+                <div className="flex flex-col gap-3 relative z-10">
+                  <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm`}>
+                    <stat.icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.name}</p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">{stat.value}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{stat.name}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">{stat.value}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue Analytics Chart (Pure CSS Implementation) */}
-            <div className="card-premium p-8 flex flex-col h-[400px]">
-              <div className="flex justify-between items-center mb-10">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <div className="w-2 h-6 bg-primary-500 rounded-full"></div>
+            <div className="card-premium p-6 flex flex-col h-[320px]">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                  <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Last 7 Days Revenue
                 </h3>
-                <span className="text-[10px] font-bold text-primary-500 bg-primary-50 dark:bg-primary-500/10 px-3 py-1 rounded-full uppercase">Live Sync</span>
+                <span className="text-[9px] font-black text-primary-500 bg-primary-50 dark:bg-primary-500/10 px-2 py-0.5 rounded-full uppercase">Live Sync</span>
               </div>
-              <div className="flex-1 flex items-end justify-between gap-3 px-2">
+              <div className="flex-1 flex items-end justify-between gap-2 px-1">
                 {summary?.revenue_analytics?.length > 0 ? (
                   summary.revenue_analytics.map((day, idx) => {
                     const max = Math.max(...summary.revenue_analytics.map(d => d.amount), 1);
@@ -130,14 +130,14 @@ export default function Reports() {
             </div>
 
             {/* Top Categories Analytics */}
-            <div className="card-premium p-8 flex flex-col h-[400px]">
-              <div className="flex justify-between items-center mb-10">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <div className="w-2 h-6 bg-emerald-500 rounded-full"></div>
-                  Top Selling Categories
+            <div className="card-premium p-6 flex flex-col h-[320px]">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                  <div className="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
+                  Category performance
                 </h3>
               </div>
-              <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-hide">
                 {summary?.top_categories?.length > 0 ? (
                   summary.top_categories.map((cat, idx) => {
                     const total = summary.top_categories.reduce((acc, cur) => acc + cur.value, 0);

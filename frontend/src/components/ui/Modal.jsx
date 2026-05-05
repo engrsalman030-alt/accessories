@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'md' }) => {
+const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'md', zIndex = 9999 }) => {
   const sizeClasses = {
     sm: 'max-w-sm',
     md: 'max-w-lg',
@@ -14,7 +14,10 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'md' }) => {
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 overflow-hidden"
+          style={{ zIndex }}
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

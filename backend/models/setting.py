@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from database import Base
+from datetime import datetime
 
 class Setting(Base):
     __tablename__ = "settings"
@@ -11,3 +12,8 @@ class Setting(Base):
     currency = Column(String, default="PKR")
     logo_url = Column(String, nullable=True)
     printer_type = Column(String, default="thermal") # thermal or standard
+    
+    # License & Security
+    installation_date = Column(DateTime, default=datetime.utcnow)
+    license_key = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)

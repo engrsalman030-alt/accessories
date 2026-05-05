@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -13,5 +13,6 @@ class Supplier(Base):
     email = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
     outstanding_balance = Column(Float, default=0.0, nullable=False)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -7,6 +7,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, index=True)
     party_type = Column(String, nullable=False)  # customer or supplier
     party_id = Column(Integer, nullable=False)
+    invoice_id = Column(Integer, nullable=True)
     amount = Column(Float, nullable=False)
     method = Column(String, nullable=True)
     reference_note = Column(Text, nullable=True)

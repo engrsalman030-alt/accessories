@@ -25,6 +25,18 @@ const AddEditCustomerModal = ({ isOpen, onClose, customer = null, onSuccess }) =
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const elements = Array.from(form.elements).filter(el => !el.disabled && el.type !== 'hidden');
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -61,7 +73,7 @@ const AddEditCustomerModal = ({ isOpen, onClose, customer = null, onSuccess }) =
       title={customer ? 'Edit Customer' : 'Register New Customer'}
       size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
         <div className="grid grid-cols-1 gap-4">
           <Input
             label="Customer Name"

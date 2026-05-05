@@ -25,7 +25,13 @@ const SupplierLedgerReport = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get('/suppliers').then(res => setSuppliers(res.data));
+    api.get('/suppliers?limit=1000').then(res => {
+      const data = res.data?.items || res.data || [];
+      setSuppliers(Array.isArray(data) ? data : []);
+    }).catch(err => {
+      console.error("Failed to fetch suppliers:", err);
+      setSuppliers([]);
+    });
     if (!settings) fetchSettings();
   }, [settings, fetchSettings]);
 
@@ -85,7 +91,7 @@ const SupplierLedgerReport = () => {
       } else {
         // All Suppliers Report
         const res = await api.get('/suppliers?limit=1000');
-        const data = res.data;
+        const data = res.data?.items || res.data || [];
         
         if (!Array.isArray(data)) throw new Error('Invalid suppliers list');
         
@@ -144,7 +150,7 @@ const SupplierLedgerReport = () => {
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 font-bold dark:text-white"
                   >
                     <option value="">Select Supplier</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.company})</option>)}
+                    {(suppliers || []).map(s => <option key={s.id} value={s.id}>{s.name} ({s.company || 'Private'})</option>)}
                   </select>
                 </div>
               </div>
@@ -175,7 +181,7 @@ const SupplierLedgerReport = () => {
               </div>
               <div>
                 <p className="text-sm font-black text-primary-900 dark:text-primary-400">All Suppliers Report</p>
-                <p className="text-xs font-bold text-primary-700 dark:text-primary-500/70">This will generate a summary of all balances for all {suppliers.length} suppliers.</p>
+                <p className="text-xs font-bold text-primary-700 dark:text-primary-500/70">This will generate a summary of all balances for all {(suppliers || []).length} suppliers.</p>
               </div>
             </div>
           )}

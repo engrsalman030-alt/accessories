@@ -18,7 +18,8 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
       setReturnItems(data.items.map(item => ({
         ...item,
         return_qty: 0,
-        max_qty: item.quantity
+        max_qty: item.quantity,
+        condition: 'fine'
       })));
     }
   }, [data]);
@@ -42,7 +43,8 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
     const itemsToReturn = returnItems.filter(item => item.return_qty > 0);
     
     if (itemsToReturn.length === 0) {
-      return toast.error('Please select at least one item to return');
+      setIsSubmitting(false);
+      return toast.error('Selection Required: Please enter the return quantity for at least one product before confirming.');
     }
 
     setIsSubmitting(true);
@@ -54,7 +56,9 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
           product_id: item.product_id,
           quantity: item.return_qty,
           unit_price: type === 'sale' ? item.unit_price : 0,
-          unit_cost: type === 'purchase' ? item.unit_cost : 0
+          unit_cost: type === 'purchase' ? item.unit_cost : 0,
+          condition: item.condition,
+          serial_numbers: item.selected_serials || []
         }))
       };
 
@@ -96,7 +100,7 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
             <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10">
               <tr className="border-b border-slate-100 dark:border-slate-800">
                 <th className="pb-3 text-[10px] font-black uppercase text-slate-400 tracking-wider">Product</th>
-                <th className="pb-3 text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Purchased</th>
+                <th className="pb-3 text-[10px] font-black uppercase text-slate-400 tracking-wider text-center">Status</th>
                 <th className="pb-3 text-[10px] font-black uppercase text-slate-400 tracking-wider text-center w-24">Return Qty</th>
                 <th className="pb-3 text-[10px] font-black uppercase text-slate-400 tracking-wider text-right">Refund</th>
               </tr>
@@ -105,10 +109,68 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
               {returnItems.map((item, idx) => (
                 <tr key={idx}>
                   <td className="py-4">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{item.product_name || item.name}</p>
-                    <p className="text-[10px] text-slate-500 font-medium">PKR {type === 'sale' ? item.unit_price : item.unit_cost} / unit</p>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{item.product_name || item.name || item.product?.name}</p>
+                      <p className="text-[10px] text-slate-500 font-medium">PKR {type === 'sale' ? item.unit_price : item.unit_cost} / unit</p>
+                      
+                      {item.serials && item.serials.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.serials.map((s, sIdx) => {
+                            const isSelected = (item.selected_serials || []).includes(s.serial_number);
+                            return (
+                              <button
+                                key={sIdx}
+                                type="button"
+                                onClick={() => {
+                                  const current = item.selected_serials || [];
+                                  const next = isSelected 
+                                    ? current.filter(sn => sn !== s.serial_number)
+                                    : [...current, s.serial_number];
+                                  
+                                  const newItems = [...returnItems];
+                                  newItems[idx].selected_serials = next;
+                                  newItems[idx].return_qty = next.length;
+                                  setReturnItems(newItems);
+                                }}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border transition-all ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                              >
+                                {s.serial_number}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="py-4 text-center font-bold text-slate-600">{item.max_qty}</td>
+                  <td className="py-4 text-center">
+                    <div className="flex flex-col gap-1 items-center">
+                      <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = [...returnItems];
+                            newItems[idx].condition = 'fine';
+                            setReturnItems(newItems);
+                          }}
+                          className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${item.condition === 'fine' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                        >
+                          Fine
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = [...returnItems];
+                            newItems[idx].condition = 'damaged';
+                            setReturnItems(newItems);
+                          }}
+                          className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${item.condition === 'damaged' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-400'}`}
+                        >
+                          Damaged
+                        </button>
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Max: {item.max_qty}</p>
+                    </div>
+                  </td>
                   <td className="py-4">
                     <input 
                       type="number"
@@ -117,7 +179,8 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
                       step="0.01"
                       value={item.return_qty}
                       onChange={(e) => handleQtyChange(idx, e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-2 py-1.5 text-center font-black text-primary-600 focus:border-primary-500 outline-none transition-all"
+                      readOnly={item.serials && item.serials.length > 0}
+                      className={`w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-2 py-1.5 text-center font-black text-primary-600 focus:border-primary-500 outline-none transition-all ${item.serials && item.serials.length > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   <td className="py-4 text-right font-bold text-slate-900 dark:text-white">
@@ -145,8 +208,8 @@ const ReturnModal = ({ isOpen, onClose, data, type = 'sale', onComplete }) => {
             </div>
             <Button 
               type="submit"
-              variant="primary"
-              className="h-14 px-8 rounded-2xl font-black uppercase tracking-wider bg-white text-slate-900 hover:bg-slate-100"
+              variant="secondary"
+              className="h-14 px-8 rounded-2xl font-black uppercase tracking-wider !bg-white !text-slate-900 hover:!bg-slate-100 border-none shadow-xl"
               loading={isSubmitting}
             >
               Confirm Return

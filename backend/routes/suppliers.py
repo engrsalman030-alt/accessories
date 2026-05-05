@@ -17,14 +17,22 @@ from schemas.supplier import (
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
-@router.get("/suppliers", response_model=List[SupplierListResponse])
+@router.get("/suppliers")
 async def read_suppliers(
-    skip: int = 0,
-    limit: int = 50,
+    page: int = Query(1, ge=1),
+    size: int = Query(25, ge=1, le=1000),
     search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_all_suppliers(db, skip=skip, limit=limit, search=search)
+    skip = (page - 1) * size
+    suppliers, total = await get_all_suppliers(db, skip=skip, limit=size, search=search)
+    return {
+        "items": suppliers,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": (total + size - 1) // size
+    }
 
 @router.get("/suppliers/summary", response_model=SupplierSummary)
 async def read_supplier_summary(db: AsyncSession = Depends(get_db)):

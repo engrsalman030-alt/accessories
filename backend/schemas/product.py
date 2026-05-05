@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class CategoryBase(BaseModel):
@@ -28,17 +28,19 @@ class BrandResponse(BrandBase):
 
 class ProductBase(BaseModel):
     name: str
-    sku: str
+    sku: Optional[str] = None
     barcode: Optional[str] = None
     imei: Optional[str] = None
     category_id: Optional[int] = None
     brand_id: Optional[int] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    cost_price: float = 0.0
     retail_price: float
     wholesale_price: float
     distributor_price: float
     stock_qty: float
+    scrap_qty: float = 0.0
     min_stock_qty: float
     is_active: bool = True
 
@@ -58,6 +60,7 @@ class ProductUpdate(BaseModel):
     wholesale_price: Optional[float] = None
     distributor_price: Optional[float] = None
     stock_qty: Optional[float] = None
+    scrap_qty: Optional[float] = None
     min_stock_qty: Optional[float] = None
     is_active: Optional[bool] = None
 
@@ -67,6 +70,14 @@ class ProductResponse(ProductBase):
     brand: Optional[BrandResponse] = None
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProductDetailResponse(BaseModel):
+    product: ProductResponse
+    stock_value: float
+    suppliers: List[str]
 
     class Config:
         from_attributes = True

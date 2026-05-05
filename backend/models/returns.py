@@ -25,6 +25,7 @@ class SaleReturnItem(Base):
     quantity = Column(Float, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
     condition = Column(String, default="fine") # fine or damaged
+    serial_numbers = Column(Text, nullable=True) # Comma-separated serials
     
     sale_return = relationship("SaleReturn", back_populates="items")
     product = relationship("Product")
@@ -51,6 +52,7 @@ class PurchaseReturnItem(Base):
     quantity = Column(Float, nullable=False)
     unit_cost = Column(Numeric(10, 2), nullable=False)
     condition = Column(String, default="fine") # fine or damaged
+    serial_numbers = Column(Text, nullable=True) # Comma-separated serials
     
     purchase_return = relationship("PurchaseReturn", back_populates="items")
     product = relationship("Product")

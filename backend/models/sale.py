@@ -11,6 +11,8 @@ class Sale(Base):
     date = Column(DateTime, default=datetime.utcnow)
     subtotal = Column(Float, nullable=False)
     discount = Column(Float, default=0.0)
+    discount_type = Column(String, default="fixed") # fixed, percentage
+    discount_value = Column(Float, default=0.0)
     total_amount = Column(Float, nullable=False)
     amount_paid = Column(Float, default=0.0)
     balance_due = Column(Float, default=0.0)
@@ -33,3 +35,4 @@ class SaleItem(Base):
     total_price = Column(Float, nullable=False)
     sale = relationship("Sale", back_populates="items")
     product = relationship("Product")
+    serials = relationship("ProductSerial", primaryjoin="SaleItem.id == ProductSerial.sale_item_id", foreign_keys="ProductSerial.sale_item_id", viewonly=True)

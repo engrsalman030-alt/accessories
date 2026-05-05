@@ -9,21 +9,31 @@ from fastapi import HTTPException, status
 
 async def get_all_suppliers(
     db: AsyncSession, skip: int = 0, limit: int = 50, search: Optional[str] = None
-) -> List[SupplierListResponse]:
-    query = select(Supplier)
+):
+    # Base queries
+    query = select(Supplier).where(Supplier.is_active == True)
+    count_query = select(func.count()).select_from(Supplier).where(Supplier.is_active == True)
+
     if search:
         search_term = f"%{search}%"
-        query = query.where(
-            or_(
-                Supplier.name.ilike(search_term),
-                Supplier.phone.ilike(search_term),
-                Supplier.company.ilike(search_term)
-            )
+        filters = or_(
+            Supplier.name.ilike(search_term),
+            Supplier.phone.ilike(search_term),
+            Supplier.company.ilike(search_term)
         )
+        query = query.where(filters)
+        count_query = count_query.where(filters)
+
+    # Execute count
+    total_result = await db.execute(count_query)
+    total_count = total_result.scalar()
+
+    # Execute data query
     query = query.order_by(Supplier.name).offset(skip).limit(limit)
     result = await db.execute(query)
     suppliers = result.scalars().all()
-    return [SupplierListResponse.from_orm(supplier) for supplier in suppliers]
+    
+    return [SupplierListResponse.from_orm(supplier) for supplier in suppliers], total_count
 
 async def get_supplier_by_id(db: AsyncSession, supplier_id: int) -> SupplierResponse:
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
@@ -94,15 +104,18 @@ async def delete_supplier(db: AsyncSession, supplier_id: int):
     result = await db.execute(
         select(Purchase).where(Purchase.supplier_id == supplier_id).limit(1)
     )
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete supplier with purchase history. Deactivate instead."
-        )
-    
-    await db.delete(supplier)
-    await db.commit()
-    return {"message": "Supplier deleted successfully"}
+    has_history = result.scalar_one_or_none() is not None
+
+    if has_history:
+        # Soft delete
+        supplier.is_active = False
+        await db.commit()
+        return {"message": "Supplier deactivated successfully (preserved history)"}
+    else:
+        # Hard delete
+        await db.delete(supplier)
+        await db.commit()
+        return {"message": "Supplier deleted successfully"}
 
 async def get_supplier_summary(db: AsyncSession) -> SupplierSummary:
     # Total suppliers

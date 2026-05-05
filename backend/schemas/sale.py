@@ -8,12 +8,13 @@ class SaleItemBase(BaseModel):
     unit_price: float
 
 class SaleItemCreate(SaleItemBase):
-    pass
+    serial_numbers: Optional[List[str]] = []
 
 class SaleItemResponse(SaleItemBase):
     id: int
     total_price: float
     product_name: Optional[str] = None
+    serial_numbers: Optional[List[str]] = []
     
     class Config:
         from_attributes = True
@@ -23,6 +24,8 @@ class SaleBase(BaseModel):
     customer_type: str  # retail, wholesale, distributor
     subtotal: float
     discount: float = 0.0
+    discount_type: Optional[str] = "fixed"
+    discount_value: Optional[float] = 0.0
     total_amount: float
     amount_paid: float = 0.0
     payment_method: Optional[str] = "cash"

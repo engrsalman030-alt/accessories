@@ -34,7 +34,11 @@ const InvoicePrint = ({ data, type = 'sale' }) => {
             <div className="flex justify-center mb-2">
               <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center border-2 border-slate-800 overflow-hidden">
                 {settings?.logo_url ? (
-                  <img src={`http://${window.location.hostname}:8000${settings.logo_url}`} alt="Shop Logo" className="w-full h-full object-contain p-1" />
+                  <img 
+                    src={settings.logo_url.startsWith('http') ? settings.logo_url : `http://127.0.0.1:8000${settings.logo_url}`} 
+                    alt="Shop Logo" 
+                    className="w-full h-full object-contain p-1" 
+                  />
                 ) : (
                   <CubeIcon className="w-6 h-6 text-slate-800" />
                 )}
@@ -126,7 +130,7 @@ const InvoicePrint = ({ data, type = 'sale' }) => {
               <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden">
                 {settings?.logo_url ? (
                   <img 
-                    src={settings.logo_url.startsWith('http') ? settings.logo_url : `http://${window.location.hostname}:8000${settings.logo_url}`} 
+                    src={settings.logo_url.startsWith('http') ? settings.logo_url : `http://127.0.0.1:8000${settings.logo_url}`} 
                     alt="Shop Logo" 
                     className="w-full h-full object-contain p-1" 
                   />

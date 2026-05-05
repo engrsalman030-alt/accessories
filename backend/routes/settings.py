@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from database import get_db, DATABASE_URL
+from database import get_db, DATABASE_URL, engine
 from routes.auth import get_current_user
 from services.setting_service import get_settings, update_settings
 from schemas.setting import SettingResponse, SettingUpdate
@@ -66,9 +66,13 @@ async def upload_logo(file: UploadFile = File(...), db: AsyncSession = Depends(g
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_db_params():
+    if DATABASE_URL.startswith("sqlite"):
+        return {'is_sqlite': True, 'path': DATABASE_URL.split(":///")[-1]}
+    
     # Parse postgresql+asyncpg://user:pass@host:port/dbname
     parsed = urlparse(DATABASE_URL.replace('+asyncpg', ''))
     return {
+        'is_sqlite': False,
         'dbname': parsed.path[1:],
         'user': parsed.username,
         'password': parsed.password,
@@ -80,36 +84,26 @@ def get_db_params():
 async def backup_database():
     try:
         db_params = get_db_params()
-        
-        # Ensure backup directory exists
         os.makedirs("backups", exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filepath = f"backups/shopmanager_backup_{timestamp}.dump"
         
+        if db_params.get('is_sqlite'):
+            import shutil
+            filepath = f"backups/shopmanager_backup_{timestamp}.db"
+            shutil.copy2(db_params['path'], filepath)
+            return FileResponse(path=filepath, filename=os.path.basename(filepath), media_type="application/x-sqlite3")
+            
+        filepath = f"backups/shopmanager_backup_{timestamp}.dump"
         env = os.environ.copy()
         if db_params['password']:
             env['PGPASSWORD'] = db_params['password']
             
-        command = [
-            "pg_dump",
-            "-U", db_params['user'],
-            "-h", db_params['host'],
-            "-p", str(db_params['port']),
-            "-d", db_params['dbname'],
-            "-F", "c",
-            "-f", filepath
-        ]
-        
+        command = ["pg_dump", "-U", db_params['user'], "-h", db_params['host'], "-p", str(db_params['port']), "-d", db_params['dbname'], "-F", "c", "-f", filepath]
         process = subprocess.run(command, env=env, capture_output=True, text=True)
-        
         if process.returncode != 0:
             raise Exception(f"pg_dump failed: {process.stderr}")
             
-        return FileResponse(
-            path=filepath, 
-            filename=f"shopmanager_backup_{timestamp}.dump", 
-            media_type="application/octet-stream"
-        )
+        return FileResponse(path=filepath, filename=os.path.basename(filepath), media_type="application/octet-stream")
     except Exception as e:
         print(f"BACKUP ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -119,6 +113,16 @@ async def restore_database(file: UploadFile = File(...)):
     try:
         db_params = get_db_params()
         
+        if db_params.get('is_sqlite'):
+            # Close all existing connections before overwriting the file
+            await engine.dispose()
+            
+            import shutil
+            contents = await file.read()
+            with open(db_params['path'], "wb") as f:
+                f.write(contents)
+            return {"status": "success", "message": "Database restored successfully"}
+
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".dump") as tmp:
             contents = await file.read()
@@ -129,22 +133,9 @@ async def restore_database(file: UploadFile = File(...)):
         if db_params['password']:
             env['PGPASSWORD'] = db_params['password']
             
-        command = [
-            "pg_restore",
-            "-U", db_params['user'],
-            "-h", db_params['host'],
-            "-p", str(db_params['port']),
-            "-d", db_params['dbname'],
-            "--clean",
-            "-1", # Single transaction
-            tmp_path
-        ]
-        
+        command = ["pg_restore", "-U", db_params['user'], "-h", db_params['host'], "-p", str(db_params['port']), "-d", db_params['dbname'], "--clean", "-1", tmp_path]
         process = subprocess.run(command, env=env, capture_output=True, text=True)
-        
-        # Clean up temp file
         os.unlink(tmp_path)
-        
         if process.returncode != 0:
             raise Exception(f"pg_restore failed: {process.stderr}")
             
@@ -163,11 +154,11 @@ async def factory_reset(db: AsyncSession = Depends(get_db)):
             "products", "brands", "categories"
         ]
         
-        # Truncate all tables safely
-        truncate_query = f"TRUNCATE TABLE {', '.join(tables)} CASCADE;"
-        await db.execute(text(truncate_query))
-        await db.commit()
+        # Delete all data from tables in correct order (child tables first)
+        for table in tables:
+            await db.execute(text(f"DELETE FROM {table}"))
         
+        await db.commit()
         return {"status": "success", "message": "All data has been deleted"}
     except Exception as e:
         await db.rollback()

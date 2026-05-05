@@ -20,10 +20,15 @@ class UserInDB(User):
 
 def get_user(username: str):
     if username == settings.owner_username:
-        return UserInDB(username=username, hashed_password=get_password_hash(settings.owner_password))
+        # Return a User object for the owner (no hash needed here)
+        return User(username=username)
     return None
 
 def authenticate_user(username: str, password: str):
+    # Check for owner account directly from settings
+    if username == settings.owner_username and password == settings.owner_password:
+        return User(username=username)
+        
     user = get_user(username)
     if not user:
         return False

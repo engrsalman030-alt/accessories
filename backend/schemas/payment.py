@@ -6,6 +6,7 @@ from decimal import Decimal
 class PaymentCreate(BaseModel):
     party_type: str  # 'supplier' or 'customer'
     party_id: int
+    invoice_id: Optional[int] = None
     amount: float
     method: str
     reference_note: Optional[str] = None
@@ -14,6 +15,7 @@ class PaymentCreate(BaseModel):
 class PaymentResponse(BaseModel):
     party_type: str
     party_id: int
+    invoice_id: Optional[int] = None
     amount: float
     method: str
     reference_note: Optional[str] = None

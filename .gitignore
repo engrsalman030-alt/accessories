@@ -52,5 +52,7 @@ backend/shop-backend
 frontend/build/
 desktop-app/dist/
 desktop-app/build/
+desktop-app/frontend/
+desktop-app/resources/
 *.dmg
 *.app

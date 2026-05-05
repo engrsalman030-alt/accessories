@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const location = useLocation();
+
+  // Automatically manage sidebar state based on route
+  React.useEffect(() => {
+    if (location.pathname === '/sales') {
+      setIsSidebarOpen(false);
+    } else {
+      setIsSidebarOpen(true);
+    }
+  }, [location.pathname]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -32,11 +42,11 @@ export default function Layout() {
             <Outlet />
           </div>
 
-          <footer className="mt-10 pt-6 text-center border-t border-slate-200/50 dark:border-slate-800/50 w-full max-w-[1600px] mx-auto shrink-0 print:hidden">
-            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+          <footer className="mt-6 pt-4 text-center border-t border-slate-200/50 dark:border-slate-800/50 w-full max-w-[1600px] mx-auto shrink-0 print:hidden">
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
               &copy; {new Date().getFullYear()} ShopManager. All rights reserved.
             </p>
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1.5">
+            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">
               Developed by <span className="text-primary-600 dark:text-primary-500">Virtual Tech Solution</span>
             </p>
           </footer>

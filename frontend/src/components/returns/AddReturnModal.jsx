@@ -33,9 +33,9 @@ const AddReturnModal = ({ isOpen, onClose, onSuccess }) => {
       
       // Fetch parties based on type
       if (type === 'sale') {
-        api.get('/customers').then(res => setParties(res.data));
+        api.get('/customers').then(res => setParties(res.data?.items || res.data || []));
       } else {
-        api.get('/suppliers').then(res => setParties(res.data));
+        api.get('/suppliers').then(res => setParties(res.data?.items || res.data || []));
       }
     }
   }, [isOpen, type]);
@@ -71,6 +71,18 @@ const AddReturnModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const totalAmount = formData.items.reduce((sum, item) => sum + (item.quantity * (item.rate || 0)), 0);
+
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const elements = Array.from(form.elements).filter(el => !el.disabled && el.type !== 'hidden');
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -135,7 +147,7 @@ const AddReturnModal = ({ isOpen, onClose, onSuccess }) => {
       subtitle="Issue a new return credit note for customers or suppliers"
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-8">
         {/* Type Toggle */}
         <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-2xl w-fit mx-auto">
           <button 

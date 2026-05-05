@@ -9,3 +9,5 @@ from models.payment import Payment
 from models.ledger import Ledger
 from models.expense import Expense, ExpenseCategory
 from models.returns import SaleReturn, SaleReturnItem, PurchaseReturn, PurchaseReturnItem
+from models.setting import Setting
+from models.product_serial import ProductSerial

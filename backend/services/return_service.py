@@ -41,9 +41,22 @@ async def process_sale_return(db: AsyncSession, sale_id: int = None, customer_id
             product_id=item['product_id'],
             quantity=qty,
             unit_price=price,
-            condition=item.get('condition', 'fine')
+            condition=item.get('condition', 'fine'),
+            serial_numbers=",".join(item.get('serial_numbers', [])) if isinstance(item.get('serial_numbers'), list) else item.get('serial_numbers')
         )
         db.add(db_return_item)
+        
+        # Update serial statuses if provided
+        if item.get('serial_numbers'):
+            serials = item['serial_numbers'] if isinstance(item['serial_numbers'], list) else item['serial_numbers'].split(',')
+            from models.product_serial import ProductSerial
+            for sn in serials:
+                if sn.strip():
+                    stmt_sn = update(ProductSerial).where(
+                        ProductSerial.product_id == item['product_id'],
+                        ProductSerial.serial_number == sn.strip()
+                    ).values(status="in_stock" if item.get('condition') == 'fine' else "returned")
+                    await db.execute(stmt_sn)
         
         # Adjust Stock: Fine goes to stock_qty, Damaged goes to scrap_qty
         if item.get('condition') == 'damaged':
@@ -110,9 +123,22 @@ async def process_purchase_return(db: AsyncSession, purchase_id: int = None, sup
             product_id=item['product_id'],
             quantity=qty,
             unit_cost=cost,
-            condition=item.get('condition', 'fine')
+            condition=item.get('condition', 'fine'),
+            serial_numbers=",".join(item.get('serial_numbers', [])) if isinstance(item.get('serial_numbers'), list) else item.get('serial_numbers')
         )
         db.add(db_return_item)
+        
+        # Update serial statuses if provided
+        if item.get('serial_numbers'):
+            serials = item['serial_numbers'] if isinstance(item['serial_numbers'], list) else item['serial_numbers'].split(',')
+            from models.product_serial import ProductSerial
+            for sn in serials:
+                if sn.strip():
+                    stmt_sn = update(ProductSerial).where(
+                        ProductSerial.product_id == item['product_id'],
+                        ProductSerial.serial_number == sn.strip()
+                    ).values(status="returned")
+                    await db.execute(stmt_sn)
         
         # Decrease stock/scrap based on condition
         if item.get('condition') == 'damaged':
@@ -165,3 +191,119 @@ async def get_all_purchase_returns(db: AsyncSession, skip: int = 0, limit: int =
     ).order_by(PurchaseReturn.date.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
+
+async def delete_sale_return(db: AsyncSession, return_id: int):
+    # 1. Fetch return with items
+    query = select(SaleReturn).options(selectinload(SaleReturn.items)).where(SaleReturn.id == return_id)
+    result = await db.execute(query)
+    db_return = result.scalar_one_or_none()
+    
+    if not db_return:
+        return False
+        
+    # 2. Revert Stock and Balance
+    for item in db_return.items:
+        # Revert Stock (Decrease)
+        if item.condition == 'damaged':
+            stmt = update(Product).where(Product.id == item.product_id).values(
+                scrap_qty=Product.scrap_qty - item.quantity
+            )
+        else:
+            stmt = update(Product).where(Product.id == item.product_id).values(
+                stock_qty=Product.stock_qty - item.quantity
+            )
+        await db.execute(stmt)
+        
+    if db_return.customer_id:
+        # Revert Customer Balance (Increase back)
+        stmt = update(Customer).where(Customer.id == db_return.customer_id).values(
+            outstanding_balance=Customer.outstanding_balance + db_return.total_refund_amount
+        )
+        await db.execute(stmt)
+        
+        # Remove Ledger
+        l_stmt = select(Ledger).where(
+            Ledger.party_type == "customer",
+            Ledger.party_id == db_return.customer_id,
+            Ledger.reference_id == db_return.id,
+            Ledger.transaction_type == "sale_return"
+        )
+        l_res = await db.execute(l_stmt)
+        ledger = l_res.scalar_one_or_none()
+        if ledger:
+            await db.delete(ledger)
+            
+    # 3. Delete Return
+    await db.delete(db_return)
+    await db.commit()
+    return True
+
+async def delete_purchase_return(db: AsyncSession, return_id: int):
+    # 1. Fetch return with items
+    query = select(PurchaseReturn).options(selectinload(PurchaseReturn.items)).where(PurchaseReturn.id == return_id)
+    result = await db.execute(query)
+    db_return = result.scalar_one_or_none()
+    
+    if not db_return:
+        return False
+        
+    # 2. Revert Stock and Balance
+    for item in db_return.items:
+        # Revert Stock (Increase back)
+        if item.condition == 'damaged':
+            stmt = update(Product).where(Product.id == item.product_id).values(
+                scrap_qty=Product.scrap_qty + item.quantity
+            )
+        else:
+            stmt = update(Product).where(Product.id == item.product_id).values(
+                stock_qty=Product.stock_qty + item.quantity
+            )
+        await db.execute(stmt)
+        
+    if db_return.supplier_id:
+        # Revert Supplier Balance (Increase back)
+        stmt = update(Supplier).where(Supplier.id == db_return.supplier_id).values(
+            outstanding_balance=Supplier.outstanding_balance + db_return.total_refund_amount
+        )
+        await db.execute(stmt)
+        
+        # Remove Ledger
+        l_stmt = select(Ledger).where(
+            Ledger.party_type == "supplier",
+            Ledger.party_id == db_return.supplier_id,
+            Ledger.reference_id == db_return.id,
+            Ledger.transaction_type == "purchase_return"
+        )
+        l_res = await db.execute(l_stmt)
+        ledger = l_res.scalar_one_or_none()
+        if ledger:
+            await db.delete(ledger)
+            
+    # 3. Delete Return
+    await db.delete(db_return)
+    await db.commit()
+    return True
+
+async def update_sale_return(db: AsyncSession, return_id: int, reason: str):
+    query = select(SaleReturn).where(SaleReturn.id == return_id)
+    result = await db.execute(query)
+    db_return = result.scalar_one_or_none()
+    
+    if not db_return:
+        return False
+    
+    db_return.reason = reason
+    await db.commit()
+    return True
+
+async def update_purchase_return(db: AsyncSession, return_id: int, reason: str):
+    query = select(PurchaseReturn).where(PurchaseReturn.id == return_id)
+    result = await db.execute(query)
+    db_return = result.scalar_one_or_none()
+    
+    if not db_return:
+        return False
+    
+    db_return.reason = reason
+    await db.commit()
+    return True

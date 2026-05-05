@@ -87,26 +87,26 @@ const ProfitLoss = () => {
     <div className="space-y-8 pb-12">
       <div className="print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             Profit & <span className="text-primary-600">Loss</span>
-            <CalculatorIcon className="w-10 h-10 text-slate-200" />
+            <CalculatorIcon className="w-6 h-6 text-slate-200" />
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold mt-1 uppercase tracking-widest text-xs">Financial Performance Dashboard</p>
+          <p className="text-slate-500 dark:text-slate-400 font-black mt-1 uppercase tracking-widest text-[10px]">Financial Performance</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Button onClick={handlePrint} variant="outline" className="h-12 px-6 rounded-2xl border-2">
-            <PrinterIcon className="w-5 h-5 mr-2" />
-            Print Report
+        <div className="flex items-center gap-3">
+          <Button onClick={handlePrint} variant="outline" className="h-9 px-4 rounded-xl border">
+            <PrinterIcon className="w-4 h-4 mr-2" />
+            Print
           </Button>
-          <div className="flex bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="flex bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
             {['daily', 'weekly', 'monthly', 'yearly'].map((p) => (
               <button
                 key={p}
                 onClick={() => handlePeriodChange(p)}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                   period === p 
-                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' 
+                    ? 'bg-primary-600 text-white shadow-sm' 
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                 }`}
               >
@@ -119,58 +119,58 @@ const ProfitLoss = () => {
 
       {/* Screen Layout */}
       <div className="print:hidden space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard 
             title="Total Revenue" 
             amount={data?.revenue} 
             icon={ArrowTrendingUpIcon} 
             color="blue"
-            subtitle="Gross sales generated"
+            subtitle="Gross sales"
           />
           <StatCard 
             title="Cost of Goods" 
             amount={data?.cogs} 
             icon={ShoppingCartIcon} 
             color="amber"
-            subtitle="Direct inventory costs"
+            subtitle="Direct costs"
           />
           <StatCard 
             title="Gross Profit" 
             amount={data?.gross_profit} 
             icon={ChartBarIcon} 
             color="emerald"
-            subtitle="Revenue minus COGS"
+            subtitle="Revenue - COGS"
           />
           <StatCard 
             title="Net Profit" 
             amount={data?.net_profit} 
             icon={BanknotesIcon} 
             color={data?.net_profit >= 0 ? "indigo" : "rose"}
-            subtitle="Final bottom line"
+            subtitle="Bottom line"
             isHighlight={true}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="card-premium p-8">
-              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-8 border-b border-slate-100 dark:border-slate-800 pb-4">Detailed Breakdown</h3>
-              <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="card-premium p-5">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-3 uppercase tracking-tighter">Detailed Breakdown</h3>
+              <div className="space-y-4">
                 <BreakdownRow label="Gross Sales" value={data?.revenue} />
                 <BreakdownRow label="Sales Returns" value={data?.sale_returns} isNegative={true} />
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
                   <BreakdownRow label="Actual Revenue" value={data?.actual_revenue} isBold={true} />
                 </div>
-                <BreakdownRow label="Cost of Goods Sold (COGS)" value={data?.cogs} isNegative={true} />
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                <BreakdownRow label="COGS" value={data?.cogs} isNegative={true} />
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
                   <BreakdownRow label="Gross Profit" value={data?.gross_profit} isBold={true} color="text-emerald-600" />
                 </div>
-                <BreakdownRow label="Operating Expenses" value={data?.expenses} isNegative={true} />
-                <div className="border-t-2 border-slate-900 dark:border-slate-100 pt-6 mt-4">
+                <BreakdownRow label="Expenses" value={data?.expenses} isNegative={true} />
+                <div className="border-t-2 border-slate-900 dark:border-slate-100 pt-4 mt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Net Profit</span>
-                    <span className={`text-3xl font-black ${data?.net_profit >= 0 ? 'text-primary-600' : 'text-rose-600'}`}>
-                      PKR {data?.net_profit?.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    <span className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Net Profit</span>
+                    <span className={`text-2xl font-black ${data?.net_profit >= 0 ? 'text-primary-600' : 'text-rose-600'}`}>
+                      PKR {data?.net_profit?.toLocaleString(undefined, {minimumFractionDigits: 0})}
                     </span>
                   </div>
                 </div>
@@ -178,16 +178,16 @@ const ProfitLoss = () => {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="card-premium p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-2xl">
-              <h3 className="text-lg font-black uppercase tracking-widest text-slate-400 mb-6">Financial Health</h3>
-              <div className="space-y-6">
+          <div className="space-y-4">
+            <div className="card-premium p-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-xl">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-5">Financial Health</h3>
+              <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-xs font-bold uppercase">Gross Margin</span>
-                    <span className="text-xs font-black">{((data?.gross_profit / (data?.actual_revenue || 1)) * 100).toFixed(1)}%</span>
+                  <div className="flex justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase">Gross Margin</span>
+                    <span className="text-[10px] font-black">{((data?.gross_profit / (data?.actual_revenue || 1)) * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-emerald-500 rounded-full transition-all duration-1000" 
                       style={{ width: `${Math.min(100, Math.max(0, (data?.gross_profit / (data?.actual_revenue || 1)) * 100))}%` }}
@@ -195,11 +195,11 @@ const ProfitLoss = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-xs font-bold uppercase">Net Margin</span>
-                    <span className="text-xs font-black">{((data?.net_profit / (data?.actual_revenue || 1)) * 100).toFixed(1)}%</span>
+                  <div className="flex justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase">Net Margin</span>
+                    <span className="text-[10px] font-black">{((data?.net_profit / (data?.actual_revenue || 1)) * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${data?.net_profit >= 0 ? 'bg-primary-500' : 'bg-rose-500'} rounded-full transition-all duration-1000`}
                       style={{ width: `${Math.min(100, Math.max(0, (data?.net_profit / (data?.actual_revenue || 1)) * 100))}%` }}
@@ -208,8 +208,8 @@ const ProfitLoss = () => {
                 </div>
               </div>
               
-              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10 italic text-sm text-slate-300 font-medium">
-                "Net profit represents the actual earnings after all costs and expenses are subtracted from revenue."
+              <div className="mt-8 p-3 bg-white/5 rounded-xl border border-white/10 italic text-[11px] text-slate-400 font-medium">
+                "Net profit is the final bottom line after all operational overheads."
               </div>
             </div>
           </div>
@@ -333,31 +333,31 @@ const StatCard = ({ title, amount, icon: Icon, color, subtitle, isHighlight }) =
   };
 
   return (
-    <div className={`card-premium p-6 relative overflow-hidden transition-all duration-500 hover:scale-[1.02] ${isHighlight ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`}>
+    <div className={`card-premium p-4 relative overflow-hidden transition-all duration-500 hover:translate-y-[-2px] ${isHighlight ? 'ring-1 ring-primary-500' : ''}`}>
       <div className="flex justify-between items-start relative z-10">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{title}</p>
-          <p className={`text-2xl font-black text-slate-900 dark:text-white`}>
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1 leading-none">{title}</p>
+          <p className={`text-lg font-black text-slate-900 dark:text-white mt-1.5`}>
             PKR {amount?.toLocaleString(undefined, {minimumFractionDigits: 0})}
           </p>
-          <p className="text-[10px] font-bold text-slate-400 mt-1">{subtitle}</p>
+          <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tight">{subtitle}</p>
         </div>
-        <div className={`p-3 rounded-2xl ${colors[color] || colors.blue}`}>
-          <Icon className="w-6 h-6" />
+        <div className={`p-2 rounded-lg ${colors[color] || colors.blue}`}>
+          <Icon className="w-4 h-4" />
         </div>
       </div>
-      <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-5 ${colors[color]?.split(' ')[1]}`}></div>
+      <div className={`absolute -right-3 -bottom-3 w-16 h-16 rounded-full opacity-5 ${colors[color]?.split(' ')[1]}`}></div>
     </div>
   );
 };
 
 const BreakdownRow = ({ label, value, isNegative, isBold, color }) => (
   <div className="flex justify-between items-center group">
-    <span className={`text-sm ${isBold ? 'font-black text-slate-900 dark:text-white uppercase tracking-tight' : 'font-bold text-slate-500 dark:text-slate-400'}`}>
+    <span className={`text-xs ${isBold ? 'font-black text-slate-900 dark:text-white uppercase tracking-tight' : 'font-bold text-slate-500 dark:text-slate-400'}`}>
       {label}
     </span>
-    <span className={`text-sm font-black transition-transform group-hover:scale-110 ${isNegative ? 'text-rose-500' : (color || 'text-slate-900 dark:text-white')}`}>
-      {isNegative ? '-' : ''}PKR {Math.abs(value || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+    <span className={`text-[13px] font-black transition-transform group-hover:scale-105 ${isNegative ? 'text-rose-500' : (color || 'text-slate-900 dark:text-white')}`}>
+      {isNegative ? '-' : ''}PKR {Math.abs(value || 0).toLocaleString(undefined, {minimumFractionDigits: 0})}
     </span>
   </div>
 );

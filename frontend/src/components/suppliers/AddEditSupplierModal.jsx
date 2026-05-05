@@ -4,7 +4,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import supplierService from '../../services/supplierService';
 
-const AddEditSupplierModal = ({ isOpen, onClose, supplier = null, onSuccess }) => {
+const AddEditSupplierModal = ({ isOpen, onClose, supplier = null, onSuccess, zIndex = 9999 }) => {
   const [formData, setFormData] = useState({
     name: supplier?.name || '',
     phone: supplier?.phone || '',
@@ -26,6 +26,18 @@ const AddEditSupplierModal = ({ isOpen, onClose, supplier = null, onSuccess }) =
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const elements = Array.from(form.elements).filter(el => !el.disabled && el.type !== 'hidden');
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -82,8 +94,9 @@ const AddEditSupplierModal = ({ isOpen, onClose, supplier = null, onSuccess }) =
       title={supplier ? 'Update Supplier Profile' : 'Register New Supplier'}
       subtitle={supplier ? 'Modify the existing supplier records' : 'Enter the details of your new business partner'}
       size="md"
+      zIndex={zIndex}
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
         <div className="space-y-4">
           <Input
             label="Supplier Name"

@@ -12,16 +12,25 @@ import {
   TagIcon, 
   CalendarDaysIcon,
   ReceiptPercentIcon,
-  FolderPlusIcon
+  FolderPlusIcon,
+  PencilSquareIcon,
+  EyeIcon,
+  XMarkIcon,
+  InformationCircleIcon,
+  ClockIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline';
 
 const Expenses = () => {
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categories, setCategories] = useState([]);
+  const [editItem, setEditItem] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
   const [formData, setFormData] = useState({
     description: '',
     category_id: '',
@@ -29,19 +38,32 @@ const Expenses = () => {
     payment_method: 'cash',
     notes: ''
   });
+  const [summary, setSummary] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0
+  });
 
   useEffect(() => {
     fetchExpenses();
     fetchCategories();
+    fetchSummary();
   }, []);
+
+  const fetchSummary = async () => {
+    try {
+      const res = await api.get('/reports/expenses/summary');
+      setSummary(res.data);
+    } catch (error) {
+      console.error('Failed to fetch summary', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
       const res = await api.get('/expense-categories');
       setCategories(res.data);
-      if (res.data.length > 0 && !formData.category_id) {
-        setFormData(prev => ({ ...prev, category_id: res.data[0].id }));
-      }
     } catch (error) {
       toast.error('Failed to load categories');
     }
@@ -59,24 +81,71 @@ const Expenses = () => {
     }
   };
 
+  const resetForm = () => {
+    setEditItem(null);
+    setFormData({ 
+      description: '', 
+      category_id: categories[0]?.id || '', 
+      amount: '', 
+      payment_method: 'cash', 
+      notes: '' 
+    });
+  };
+
+  const handleOpenModal = (item = null) => {
+    if (item) {
+      setEditItem(item);
+      setFormData({
+        description: item.description,
+        category_id: item.category_id,
+        amount: item.amount,
+        payment_method: item.payment_method || 'cash',
+        notes: item.notes || ''
+      });
+    } else {
+      resetForm();
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleOpenViewModal = (item) => {
+    setViewItem(item);
+    setIsViewModalOpen(true);
+  };
+
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const elements = Array.from(form.elements).filter(el => !el.disabled && el.type !== 'hidden');
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/expenses', {
+      const payload = {
         ...formData,
         category_id: parseInt(formData.category_id),
         amount: parseFloat(formData.amount)
-      });
-      toast.success('Expense recorded');
+      };
+
+      if (editItem) {
+        await api.put(`/expenses/${editItem.id}`, payload);
+        toast.success('Expense updated');
+      } else {
+        await api.post('/expenses', payload);
+        toast.success('Expense recorded');
+      }
+      
       setIsModalOpen(false);
-      setFormData({ 
-        description: '', 
-        category_id: categories[0]?.id || '', 
-        amount: '', 
-        payment_method: 'cash', 
-        notes: '' 
-      });
+      resetForm();
       fetchExpenses();
+      fetchSummary();
     } catch (error) {
       toast.error('Failed to save expense');
     }
@@ -103,72 +172,119 @@ const Expenses = () => {
       await api.delete(`/expenses/${id}`);
       toast.success('Deleted');
       fetchExpenses();
+      fetchSummary();
     } catch (error) {
       toast.error('Failed to delete');
     }
   };
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
   return (
     <div className="space-y-8 pb-12">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white">Shop <span className="text-rose-600">Expenses</span></h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold mt-1">Track your operational costs and overheads.</p>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Shop <span className="text-rose-600">Expenses</span></h1>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">Track operational costs and overheads.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} variant="primary" className="h-14 px-8 rounded-2xl shadow-lg shadow-primary-500/20">
-          <PlusIcon className="w-5 h-5 mr-2" />
+        <button onClick={() => handleOpenModal()} className="btn-primary">
+          <PlusIcon className="w-4 h-4" />
           Add Expense
-        </Button>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card-premium p-6 border-l-4 border-rose-600">
-          <p className="text-sm font-bold text-slate-400 uppercase">Total Expenses</p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">PKR {totalExpenses.toFixed(2)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card-premium p-4 border-l-4 border-rose-500 bg-rose-50/10 transition-all cursor-default">
+          <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">Today</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white mt-1">PKR {summary.daily.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
+        </div>
+        <div className="card-premium p-4 border-l-4 border-amber-500 bg-amber-50/10 transition-all cursor-default">
+          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">This Week</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white mt-1">PKR {summary.weekly.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
+        </div>
+        <div className="card-premium p-4 border-l-4 border-emerald-500 bg-emerald-50/10 transition-all cursor-default">
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">This Month</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white mt-1">PKR {summary.monthly.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
+        </div>
+        <div className="card-premium p-4 border-l-4 border-primary-500 bg-primary-50/10 transition-all cursor-default">
+          <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest leading-none">This Year</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white mt-1">PKR {summary.yearly.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
         </div>
       </div>
 
       <div className="card-premium overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400">Date</th>
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400">Description</th>
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400">Category</th>
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400">Method</th>
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400">Amount</th>
-              <th className="px-6 py-4 text-xs font-black uppercase text-slate-400 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {expenses.map(exp => (
-              <tr key={exp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                <td className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                  {new Date(exp.date).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">{exp.description}</td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                    {exp.category?.name || 'Uncategorized'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tighter">{exp.payment_method}</td>
-                <td className="px-6 py-4 text-lg font-black text-rose-600">PKR {exp.amount.toFixed(2)}</td>
-                <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDelete(exp.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors">
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Date</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Description</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Category</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Method</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Amount</th>
+                <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {isLoading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-bold animate-pulse">
+                    Loading expenses...
+                  </td>
+                </tr>
+              ) : expenses.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-bold italic">
+                    No expenses found.
+                  </td>
+                </tr>
+              ) : (
+                expenses.map(exp => (
+                  <tr key={exp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-5 py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      {new Date(exp.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white truncate max-w-xs">{exp.description}</td>
+                    <td className="px-4 py-2.5">
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        {exp.category?.name || 'Uncategorized'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">{exp.payment_method}</td>
+                    <td className="px-4 py-2.5 text-sm font-black text-rose-600">PKR {exp.amount.toLocaleString(undefined, { minimumFractionDigits: 0 })}</td>
+                    <td className="px-5 py-2.5 text-right">
+                      <div className="flex justify-end gap-1">
+                        <button 
+                          onClick={() => handleOpenViewModal(exp)} 
+                          className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleOpenModal(exp)} 
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(exp.id)} 
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Expense" size="md">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editItem ? "Edit Expense" : "Add Expense"} size="md">
+        <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-4">
           <Input 
             label="Description" 
             required 
@@ -188,7 +304,7 @@ const Expenses = () => {
                 </button>
               </div>
               <select 
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 text-sm font-bold"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 text-sm font-bold dark:text-white"
                 value={formData.category_id}
                 onChange={e => setFormData({...formData, category_id: e.target.value})}
                 required
@@ -208,7 +324,7 @@ const Expenses = () => {
           <div className="space-y-2">
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Payment Method</label>
             <select 
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 text-sm font-bold"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 text-sm font-bold dark:text-white"
               value={formData.payment_method}
               onChange={e => setFormData({...formData, payment_method: e.target.value})}
             >
@@ -217,13 +333,25 @@ const Expenses = () => {
               <option value="card">Card</option>
             </select>
           </div>
+          <div className="space-y-2">
+             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Additional Notes</label>
+             <textarea 
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:border-primary-500 text-sm font-bold dark:text-white min-h-[100px]"
+                placeholder="Optional details about this expense..."
+                value={formData.notes}
+                onChange={e => setFormData({...formData, notes: e.target.value})}
+             />
+          </div>
           <div className="pt-4">
-            <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black text-lg">Record Expense</Button>
+            <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black text-lg">
+              {editItem ? "Update Expense" : "Record Expense"}
+            </Button>
           </div>
         </form>
       </Modal>
+
       <Modal isOpen={isCategoryModalOpen} onClose={() => setIsCategoryModalOpen(false)} title="New Category" size="sm">
-        <form onSubmit={handleCreateCategory} className="space-y-4">
+        <form onSubmit={handleCreateCategory} onKeyDown={handleFormKeyDown} className="space-y-4">
           <Input 
             label="Category Name" 
             required 
@@ -233,6 +361,78 @@ const Expenses = () => {
           />
           <Button type="submit" variant="primary" className="w-full h-12 rounded-xl font-bold">Create Category</Button>
         </form>
+      </Modal>
+
+      {/* View Expense Modal */}
+      <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Expense Details" size="sm">
+        {viewItem && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 p-4 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-rose-600">
+                <BanknotesIcon className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-rose-500 tracking-widest">Amount</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">PKR {viewItem.amount.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+               <div className="flex gap-3">
+                  <InformationCircleIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Description</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{viewItem.description}</p>
+                  </div>
+               </div>
+
+               <div className="flex gap-3">
+                  <TagIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Category</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{viewItem.category?.name || 'Uncategorized'}</p>
+                  </div>
+               </div>
+
+               <div className="flex gap-3">
+                  <ClockIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Date & Time</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      {new Date(viewItem.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+               </div>
+
+               <div className="flex gap-3">
+                  <CreditCardIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Payment Method</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white uppercase">{viewItem.payment_method}</p>
+                  </div>
+               </div>
+
+               {viewItem.notes && (
+                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Internal Notes</p>
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 italic">"{viewItem.notes}"</p>
+                 </div>
+               )}
+            </div>
+
+            <div className="pt-4 flex gap-3">
+               <Button 
+                onClick={() => { setIsViewModalOpen(false); handleOpenModal(viewItem); }}
+                variant="outline" 
+                className="flex-1 rounded-xl h-12"
+               >
+                 <PencilSquareIcon className="w-5 h-5 mr-2" />
+                 Edit
+               </Button>
+               <Button onClick={() => setIsViewModalOpen(false)} variant="primary" className="flex-1 rounded-xl h-12">Close</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api'; // Import our fixed api service
 import { LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
@@ -9,6 +9,18 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const elements = Array.from(form.elements).filter(el => !el.disabled && el.type !== 'hidden');
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      }
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -19,9 +31,9 @@ export default function Login() {
       params.append('username', username);
       params.append('password', password);
       
-      console.log(`Attempting login to http://${window.location.hostname}:8000/auth/token`);
-      const response = await axios.post(
-        `http://${window.location.hostname}:8000/auth/token`,
+      // Use the 'api' instance which has the correct 127.0.0.1:8000 baseURL
+      const response = await api.post(
+        '/auth/token',
         params,
         {
           headers: {
@@ -29,7 +41,7 @@ export default function Login() {
           }
         }
       );
-      console.log('Login successful');
+      
       localStorage.setItem('token', response.data.access_token);
       navigate('/dashboard');
     } catch (err) {
@@ -73,7 +85,7 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} onKeyDown={handleFormKeyDown} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 ml-1">
                 Username

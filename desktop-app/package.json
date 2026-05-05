@@ -1,7 +1,7 @@
 {
-  "name": "shopmanager",
+  "name": "alone-app",
   "version": "1.0.0",
-  "description": "Shop Management System",
+  "description": "Alone-app Management System",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -12,15 +12,14 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.vts.shopmanager",
-    "productName": "ShopManager",
+    "appId": "com.vts.aloneapp",
+    "productName": "Alone-app",
     "mac": {
       "category": "public.app-category.business",
       "target": ["dmg"],
-      "icon": "build/icon.png"
+      "icon": "icon.icns"
     },
     "dmg": {
-      "icon": "build/icon.png",
       "contents": [
         {
           "x": 130,
@@ -39,7 +38,9 @@
     },
     "asar": false,
     "files": [
-      "main.js"
+      "main.js",
+      "preload.js",
+      "icon.icns"
     ],
     "extraResources": [
       {

@@ -7,12 +7,21 @@ const useProductStore = create((set, get) => ({
   brands: [],
   loading: false,
   error: null,
+  totalItems: 0,
+  currentPage: 1,
+  pageSize: 25,
 
-  fetchProducts: async (search = '') => {
-    set({ loading: true, error: null });
+  fetchProducts: async (search = '', page = 1, size = 25) => {
+    set({ loading: true, error: null, currentPage: page, pageSize: size });
     try {
-      const response = await api.get('/products', { params: { search } });
-      set({ products: response.data, loading: false });
+      const response = await api.get('/products', { 
+        params: { search, page, size } 
+      });
+      set({ 
+        products: response.data.items, 
+        totalItems: response.data.total,
+        loading: false 
+      });
     } catch (error) {
       const detail = error.response?.data?.detail;
       const errorMsg = Array.isArray(detail) 
@@ -96,24 +105,36 @@ const useProductStore = create((set, get) => ({
   },
 
   addCategory: async (name) => {
+    set({ loading: true, error: null });
     try {
-      await api.post('/categories', { name });
+      const response = await api.post('/categories', { name });
       await get().fetchCategories();
-      return true;
+      set({ loading: false });
+      return response.data;
     } catch (error) {
-      console.error('Failed to add category', error);
-      return false;
+      const detail = error.response?.data?.detail;
+      const errorMsg = Array.isArray(detail) 
+        ? detail.map(err => `${err.loc[err.loc.length - 1]}: ${err.msg}`).join(', ')
+        : detail || 'Failed to add category';
+      set({ error: errorMsg, loading: false });
+      return null;
     }
   },
 
   addBrand: async (name) => {
+    set({ loading: true, error: null });
     try {
-      await api.post('/brands', { name });
+      const response = await api.post('/brands', { name });
       await get().fetchBrands();
-      return true;
+      set({ loading: false });
+      return response.data;
     } catch (error) {
-      console.error('Failed to add brand', error);
-      return false;
+      const detail = error.response?.data?.detail;
+      const errorMsg = Array.isArray(detail) 
+        ? detail.map(err => `${err.loc[err.loc.length - 1]}: ${err.msg}`).join(', ')
+        : detail || 'Failed to add brand';
+      set({ error: errorMsg, loading: false });
+      return null;
     }
   },
 }));

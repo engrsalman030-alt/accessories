@@ -19,13 +19,14 @@ async def create_payment(db: AsyncSession, payment_data: PaymentCreate) -> Payme
         db_payment = Payment(
             party_type=payment_data.party_type,
             party_id=int(payment_data.party_id),
+            invoice_id=payment_data.invoice_id,
             amount=float(payment_data.amount),
             method=payment_data.method,
             reference_note=payment_data.reference_note,
             date=payment_data.date.replace(tzinfo=None) if payment_data.date.tzinfo else payment_data.date
         )
         db.add(db_payment)
-        await db.flush()  # Get the ID before commit
+        await db.flush()
 
         remaining_payment = float(payment_data.amount)
 
@@ -39,28 +40,43 @@ async def create_payment(db: AsyncSession, payment_data: PaymentCreate) -> Payme
                 raise HTTPException(status_code=404, detail="Supplier not found")
             party.outstanding_balance = float(party.outstanding_balance) - float(payment_data.amount)
 
-            # Distribute to Purchases (FIFO)
-            purchase_result = await db.execute(
-                select(Purchase)
-                .where((Purchase.supplier_id == payment_data.party_id) & (Purchase.balance_due > 0))
-                .order_by(Purchase.date.asc())
-            )
-            purchases = purchase_result.scalars().all()
-            
-            for purchase in purchases:
-                if remaining_payment <= 0:
-                    break
+            if payment_data.invoice_id:
+                # Direct payment to a specific Purchase
+                p_result = await db.execute(
+                    select(Purchase).where(Purchase.id == payment_data.invoice_id)
+                )
+                purchase = p_result.scalar_one_or_none()
+                if purchase:
+                    payment_to_apply = min(remaining_payment, purchase.balance_due)
+                    purchase.amount_paid += payment_to_apply
+                    purchase.balance_due -= payment_to_apply
+                    
+                    if purchase.balance_due <= 0:
+                        purchase.status = "paid"
+                    else:
+                        purchase.status = "partial"
+            else:
+                # Distribute to Purchases (FIFO)
+                purchase_result = await db.execute(
+                    select(Purchase)
+                    .where((Purchase.supplier_id == payment_data.party_id) & (Purchase.balance_due > 0))
+                    .order_by(Purchase.date.asc())
+                )
+                purchases = purchase_result.scalars().all()
                 
-                payment_to_apply = min(remaining_payment, purchase.balance_due)
-                purchase.amount_paid += payment_to_apply
-                purchase.balance_due -= payment_to_apply
-                remaining_payment -= payment_to_apply
-                
-                # Update status
-                if purchase.balance_due <= 0:
-                    purchase.status = "paid"
-                else:
-                    purchase.status = "partial"
+                for purchase in purchases:
+                    if remaining_payment <= 0:
+                        break
+                    
+                    payment_to_apply = min(remaining_payment, purchase.balance_due)
+                    purchase.amount_paid += payment_to_apply
+                    purchase.balance_due -= payment_to_apply
+                    remaining_payment -= payment_to_apply
+                    
+                    if purchase.balance_due <= 0:
+                        purchase.status = "paid"
+                    else:
+                        purchase.status = "partial"
 
         elif payment_data.party_type == 'customer':
             result = await db.execute(
@@ -71,28 +87,43 @@ async def create_payment(db: AsyncSession, payment_data: PaymentCreate) -> Payme
                 raise HTTPException(status_code=404, detail="Customer not found")
             party.outstanding_balance = float(party.outstanding_balance) - float(payment_data.amount)
 
-            # Distribute to Sales (FIFO)
-            sale_result = await db.execute(
-                select(Sale)
-                .where((Sale.customer_id == payment_data.party_id) & (Sale.balance_due > 0))
-                .order_by(Sale.date.asc())
-            )
-            sales = sale_result.scalars().all()
-            
-            for sale in sales:
-                if remaining_payment <= 0:
-                    break
+            if payment_data.invoice_id:
+                # Direct payment to a specific Sale
+                s_result = await db.execute(
+                    select(Sale).where(Sale.id == payment_data.invoice_id)
+                )
+                sale = s_result.scalar_one_or_none()
+                if sale:
+                    payment_to_apply = min(remaining_payment, sale.balance_due)
+                    sale.amount_paid += payment_to_apply
+                    sale.balance_due -= payment_to_apply
+                    
+                    if sale.balance_due <= 0:
+                        sale.status = "completed"
+                    else:
+                        sale.status = "partial"
+            else:
+                # Distribute to Sales (FIFO)
+                sale_result = await db.execute(
+                    select(Sale)
+                    .where((Sale.customer_id == payment_data.party_id) & (Sale.balance_due > 0))
+                    .order_by(Sale.date.asc())
+                )
+                sales = sale_result.scalars().all()
                 
-                payment_to_apply = min(remaining_payment, sale.balance_due)
-                sale.amount_paid += payment_to_apply
-                sale.balance_due -= payment_to_apply
-                remaining_payment -= payment_to_apply
-                
-                # Update status
-                if sale.balance_due <= 0:
-                    sale.status = "completed" if hasattr(sale, 'status') and sale.status == 'completed' else "paid"
-                else:
-                    sale.status = "partial"
+                for sale in sales:
+                    if remaining_payment <= 0:
+                        break
+                    
+                    payment_to_apply = min(remaining_payment, sale.balance_due)
+                    sale.amount_paid += payment_to_apply
+                    sale.balance_due -= payment_to_apply
+                    remaining_payment -= payment_to_apply
+                    
+                    if sale.balance_due <= 0:
+                        sale.status = "completed"
+                    else:
+                        sale.status = "partial"
 
         # 3. Create Ledger entry
         ledger_result = await db.execute(

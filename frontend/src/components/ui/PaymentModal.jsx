@@ -6,7 +6,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { BanknotesIcon, CreditCardIcon, WalletIcon } from '@heroicons/react/24/outline';
 
-const PaymentModal = ({ isOpen, onClose, partyType, partyId, partyName, currentBalance, onSuccess }) => {
+const PaymentModal = ({ isOpen, onClose, partyType, partyId, partyName, currentBalance, onSuccess, invoiceId = null }) => {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [note, setNote] = useState('');
@@ -21,12 +21,13 @@ const PaymentModal = ({ isOpen, onClose, partyType, partyId, partyName, currentB
       await api.post('/payments', {
         party_type: partyType,
         party_id: partyId,
+        invoice_id: invoiceId,
         amount: parseFloat(amount),
         method: method,
         reference_note: note,
         date: new Date().toISOString()
       });
-      toast.success('Payment recorded successfully');
+      toast.success(partyType === 'supplier' ? 'Payment recorded successfully' : 'Receipt recorded successfully');
       setAmount('');
       setNote('');
       onSuccess();
@@ -47,24 +48,34 @@ const PaymentModal = ({ isOpen, onClose, partyType, partyId, partyName, currentB
     { id: 'card', name: 'Card', icon: CreditCardIcon },
   ];
 
+  const isSupplier = partyType === 'supplier';
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Record Payment" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={isSupplier ? "Record Payment" : "Receive Money"} size="md">
       <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-xs font-black uppercase text-slate-400">Paying To</p>
+            <p className="text-xs font-black uppercase text-slate-400">{isSupplier ? 'Paying To' : 'Receiving From'}</p>
             <p className="text-lg font-black text-slate-900 dark:text-white">{partyName}</p>
           </div>
           <div className="text-right">
             <p className="text-xs font-black uppercase text-slate-400">Current Balance</p>
-            <p className="text-lg font-black text-rose-600">PKR {parseFloat(currentBalance || 0).toFixed(2)}</p>
+            <p className={`text-lg font-black ${isSupplier ? 'text-rose-600' : 'text-emerald-600'}`}>
+              PKR {parseFloat(currentBalance || 0).toFixed(2)}
+            </p>
           </div>
         </div>
+        {invoiceId && (
+          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-[10px] font-black uppercase text-slate-400">Reference Invoice</p>
+            <p className="text-sm font-bold text-primary-600">{isSupplier ? 'PUR' : 'INV'}-{invoiceId}</p>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input 
-          label="Amount to Pay (PKR)" 
+          label={isSupplier ? "Amount to Pay (PKR)" : "Amount to Receive (PKR)"} 
           type="number" 
           step="0.01" 
           required 
@@ -106,10 +117,10 @@ const PaymentModal = ({ isOpen, onClose, partyType, partyId, partyName, currentB
           <Button 
             type="submit" 
             variant="primary" 
-            className="w-full h-16 rounded-2xl font-black text-lg"
+            className={`w-full h-16 rounded-2xl font-black text-lg ${!isSupplier ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' : ''}`}
             loading={isSubmitting}
           >
-            Confirm Payment
+            {isSupplier ? 'Confirm Payment' : 'Confirm Receipt'}
           </Button>
         </div>
       </form>

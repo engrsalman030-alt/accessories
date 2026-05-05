@@ -11,14 +11,22 @@ from schemas.customer import CustomerResponse, CustomerCreate, CustomerUpdate
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
-@router.get("/customers", response_model=List[CustomerResponse])
+@router.get("/customers")
 async def read_customers(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = Query(1, ge=1),
+    size: int = Query(25, ge=1, le=1000),
     search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_all_customers(db, skip=skip, limit=limit, search=search)
+    skip = (page - 1) * size
+    customers, total = await get_all_customers(db, skip=skip, limit=size, search=search)
+    return {
+        "items": customers,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": (total + size - 1) // size
+    }
 
 @router.get("/customers/{customer_id}", response_model=CustomerResponse)
 async def read_customer(customer_id: int, db: AsyncSession = Depends(get_db)):

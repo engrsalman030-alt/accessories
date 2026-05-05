@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -7,6 +7,7 @@ const os = require('os');
 
 let mainWindow;
 let backendProcess;
+let startupStartTime = Date.now();
 
 function getBackendPath() {
   if (app.isPackaged) {
@@ -22,7 +23,7 @@ function getFrontendPath() {
   return path.join(__dirname, 'frontend', 'index.html');
 }
 
-const logDir = path.join(os.homedir(), "Documents", "ShopManager", "logs");
+const logDir = path.join(os.homedir(), "Documents", "Alone-app", "logs");
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
@@ -99,7 +100,7 @@ function showLoadingScreen() {
       </head>
       <body>
         <div class="spinner"></div>
-        <h2>ShopManager</h2>
+        <h2>Alone-app</h2>
         <p>Starting services, please wait...</p>
       </body>
     </html>
@@ -145,43 +146,44 @@ function showError(message) {
         <div class="icon">⚠️</div>
         <h2>Connection Failed</h2>
         <p>${message}</p>
-        <div class="log-hint">Log file: ~/Documents/ShopManager/logs/backend.log</div>
+        <div class="log-hint">Log file: ~/Documents/Alone-app/logs/backend.log</div>
         <button onclick="location.reload()">Retry Launch</button>
       </body>
     </html>
   `);
 }
 
-function waitForBackend(onReady, onFail, retries = 120) {
+function waitForBackend(onReady, onFail, retries = 240) {
   // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues
   const req = http.get('http://127.0.0.1:8000/health', (res) => {
     if (res.statusCode === 200) {
-      logStream.write(`Backend ready after ${120 - retries} seconds\n`);
+      const duration = (Date.now() - startupStartTime) / 1000;
+      logStream.write(`Backend ready after ${duration.toFixed(1)} seconds\n`);
       onReady();
     } else if (retries > 0) {
-      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 1000);
+      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 500);
     } else {
-      onFail(`Backend health check failed with status ${res.statusCode}. The server may have encountered an error during initialization.`);
+      onFail(`Backend health check failed with status ${res.statusCode}.`);
     }
   });
 
   req.on('error', (err) => {
     if (retries > 0) {
-      if (retries % 10 === 0) {
+      if (retries % 20 === 0) {
         logStream.write(`Waiting for backend... (${retries} retries left). Error: ${err.message}\n`);
       }
-      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 1000);
+      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 500);
     } else {
-      onFail(`Could not connect to the local server (127.0.0.1:8000). The background process may have failed to start or is being blocked by a firewall. Error: ${err.message}`);
+      onFail(`Could not connect to the local server (127.0.0.1:8000). Error: ${err.message}`);
     }
   });
 
-  req.setTimeout(1000, () => {
+  req.setTimeout(500, () => {
     req.destroy();
     if (retries > 0) {
-      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 1000);
+      setTimeout(() => waitForBackend(onReady, onFail, retries - 1), 500);
     } else {
-      onFail('Connection to backend timed out. This often happens on slower machines during the first launch.');
+      onFail('Connection to backend timed out.');
     }
   });
 }
@@ -195,9 +197,10 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: true // Keep security on, but CORS is fixed in backend
+      webSecurity: true,
+      preload: path.join(__dirname, 'preload.js')
     },
-    title: 'ShopManager',
+    title: 'Alone-app',
     backgroundColor: '#0f172a',
     show: false,
     titleBarStyle: 'default'
@@ -214,7 +217,7 @@ function createWindow() {
       
       if (!fs.existsSync(frontendPath)) {
         logStream.write(`CRITICAL ERROR: Frontend file not found at ${frontendPath}\n`);
-        showError(`Frontend assets missing. Expected at: ${frontendPath}`);
+        showError(`Frontend assets missing.`);
         return;
       }
 
@@ -233,6 +236,14 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+ipcMain.on('restart-app', () => {
+  if (backendProcess) {
+    backendProcess.kill();
+  }
+  app.relaunch();
+  app.exit(0);
+});
 
 app.on('ready', () => {
   startBackend();

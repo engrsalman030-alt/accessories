@@ -10,7 +10,8 @@ from init_db import init_db
 
 if __name__ == "__main__":
     # Initialize database before starting
-    print("Running database migrations...")
+    # We only run this if we're not in a fast-restart mode or if requested
+    print("Checking database status...")
     try:
         asyncio.run(init_db())
     except Exception as e:
@@ -21,5 +22,6 @@ if __name__ == "__main__":
     
     # Run uvicorn
     from main import app
-    print(f"Starting server on port {port}...")
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    print(f"Starting Alone-app server on port {port}...")
+    # Increase timeout and worker settings for stability
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info", timeout_keep_alive=30)
