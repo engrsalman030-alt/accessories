@@ -54,7 +54,7 @@ jobs:
           cd frontend
           npm install
           npm run build
-        shell: cmd
+        shell: pwsh
 
       - name: Copy Frontend Assets
         run: |
@@ -71,7 +71,7 @@ jobs:
           cd desktop-app
           npm install
           npm run build -- --win
-        shell: cmd
+        shell: pwsh
 
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v4
@@ -79,3 +79,4 @@ jobs:
           name: Alone-app-Windows-Installer
           path: desktop-app/dist/*.exe
           retention-days: 7
+
