@@ -10,11 +10,10 @@ let backendProcess;
 let startupStartTime = Date.now();
 
 function getBackendPath() {
-  const binaryName = process.platform === 'win32' ? 'shop-backend.exe' : 'shop-backend';
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'backend', binaryName);
+    return path.join(process.resourcesPath, 'backend', 'shop-backend');
   }
-  return path.join(__dirname, 'resources', 'backend', binaryName);
+  return path.join(__dirname, 'resources', 'backend', 'shop-backend');
 }
 
 function getFrontendPath() {
